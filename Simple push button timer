@@ -1,0 +1,75 @@
+#include <EEPROM.h>
+
+const int buttonPin = 2;
+const int relayPin = 9;
+const int ledPin = 13;
+
+// the duration of the timer in hours
+const int timerDurationInHours = 8;
+
+int buttonState = 0;
+int previousState = 0;
+unsigned long startTime;
+bool timerStarted = false;
+bool programmingMode = false;
+int selectedDuration = 0;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(relayPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  // read the saved timer duration from EEPROM
+  timerDurationInHours = EEPROM.read(0);
+}
+
+void loop() {
+  buttonState = digitalRead(buttonPin);
+
+  // check if the button was held in for more than 5 seconds at startup
+  if (previousState == LOW && buttonState == HIGH && millis() < 5000) {
+    programmingMode = true;
+    selectedDuration = 1;
+    digitalWrite(ledPin, HIGH);
+    delay(100);
+    digitalWrite(ledPin, LOW);
+    delay(100);
+  }
+
+  if (programmingMode) {
+    // if the button is held in, cycle through the available durations
+    if (buttonState == HIGH) {
+      selectedDuration = (selectedDuration + 1) % 24;
+      for (int i = 0; i < selectedDuration; i++) {
+        digitalWrite(ledPin, HIGH);
+        delay(100);
+        digitalWrite(ledPin, LOW);
+        delay(100);
+      }
+    }
+
+    // if the button is released, exit programming mode and save the selected duration
+    if (buttonState == LOW && previousState == HIGH) {
+      programmingMode = false;
+      timerDurationInHours = selectedDuration;
+      // save timerDurationInHours to EEPROM here
+      EEPROM.write(0, timerDurationInHours);
+}
+}
+
+if (!programmingMode && !timerStarted && buttonState == HIGH) {
+startTime = millis();
+timerStarted = true;
+digitalWrite(relayPin, HIGH);
+}
+
+if (timerStarted) {
+unsigned long currentTime = millis();
+if (currentTime - startTime >= timerDurationInHours * 3600 * 1000) {
+timerStarted = false;
+digitalWrite(relayPin, LOW);
+}
+}
+
+previousState = buttonState;
+}
